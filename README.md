@@ -1,2 +1,2 @@
-# skibidiloser.github.io
-poopee
+# robtop.cnsl.pro
+Stupid clicker game
