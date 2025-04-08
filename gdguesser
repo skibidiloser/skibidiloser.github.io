@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GDGuesser (Single Player)</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap');
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Orbitron', sans-serif;
+      cursor: none;
+    }
+
+    body {
+      background: #1a1a1a;
+      color: #ffffff;
+      overflow: hidden;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+    }
+
+    .stars {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      background: transparent url('https://www.transparenttextures.com/patterns/stardust.png') repeat;
+      z-index: -1;
+      animation: moveStars 100s linear infinite;
+    }
+
+    @keyframes moveStars {
+      from {
+        background-position: 0 0;
+      }
+      to {
+        background-position: 10000px 5000px;
+      }
+    }
+
+    .custom-cursor {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 15px;
+      height: 15px;
+      border-radius: 50%;
+      background: #00ffff;
+      box-shadow: 0 0 10px #00ffff, 0 0 20px #00ffff;
+      pointer-events: none;
+      z-index: 10000;
+      transition: transform 0.1s ease;
+    }
+
+    h1 {
+      font-size: 3em;
+      background: linear-gradient(to right, #888, #eee);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      text-shadow: 0 0 10px rgba(200, 200, 200, 0.2);
+      margin-bottom: 20px;
+    }
+
+    label {
+      font-size: 1.1em;
+      margin: 10px;
+      color: #aaa;
+      display: block;
+    }
+
+    .date-picker {
+      margin: 10px auto;
+      background: #2c2c2c;
+      padding: 10px;
+      border-radius: 8px;
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      box-shadow: 0 0 10px rgba(255, 255, 255, 0.05);
+    }
+
+    .date-picker select {
+      background: #1e1e1e;
+      color: #fff;
+      border: none;
+      padding: 10px;
+      border-radius: 6px;
+      font-size: 1em;
+    }
+
+    button {
+      margin-top: 20px;
+      padding: 10px 25px;
+      font-size: 1.2em;
+      background: #444;
+      border: none;
+      border-radius: 12px;
+      color: #fff;
+      box-shadow: 0 0 10px #555;
+      transition: transform 0.2s ease-in-out, box-shadow 0.2s;
+    }
+
+    button:hover {
+      transform: scale(1.05);
+      box-shadow: 0 0 20px #aaa;
+    }
+
+    #output {
+      margin-top: 30px;
+      padding: 20px;
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.03);
+      box-shadow: 0 0 10px rgba(255, 255, 255, 0.05);
+      max-width: 500px;
+      animation: fadeIn 1s ease forwards;
+    }
+
+    #finale {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0, 0, 0, 0.95);
+      color: white;
+      z-index: 9999;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+      text-align: center;
+      animation: fadeInFinale 1s ease forwards;
+    }
+
+    @keyframes fadeInFinale {
+      from { opacity: 0; transform: scale(0.9); }
+      to { opacity: 1; transform: scale(1); }
+    }
+
+    #finale h2 {
+      font-size: 4em;
+      background: linear-gradient(90deg, #00ffff, #ff00ff);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      text-shadow: 0 0 20px rgba(255, 255, 255, 0.2);
+      margin-bottom: 20px;
+    }
+
+    #finale p {
+      font-size: 1.5em;
+      color: #ccc;
+    }
+  </style>
+  <script>
+    let totalScore = 0;
+    let round = 1;
+    const maxRounds = 5;
+
+    function getSelectedDate(idPrefix) {
+      const year = document.getElementById(`${idPrefix}-year`).value;
+      const month = document.getElementById(`${idPrefix}-month`).value;
+      const day = document.getElementById(`${idPrefix}-day`).value;
+      return new Date(`${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`);
+    }
+
+    function populateDateSelectors(idPrefix) {
+      const yearSelect = document.getElementById(`${idPrefix}-year`);
+      const monthSelect = document.getElementById(`${idPrefix}-month`);
+      const daySelect = document.getElementById(`${idPrefix}-day`);
+
+      const currentYear = new Date().getFullYear();
+
+      for (let i = 0; i < 10; i++) {
+        const year = currentYear - i;
+        const opt = document.createElement("option");
+        opt.value = year;
+        opt.textContent = year;
+        yearSelect.appendChild(opt);
+      }
+
+      for (let i = 1; i <= 12; i++) {
+        const opt = document.createElement("option");
+        opt.value = i;
+        opt.textContent = i;
+        monthSelect.appendChild(opt);
+      }
+
+      for (let i = 1; i <= 31; i++) {
+        const opt = document.createElement("option");
+        opt.value = i;
+        opt.textContent = i;
+        daySelect.appendChild(opt);
+      }
+    }
+
+    function calculateScore() {
+      if (round > maxRounds) return;
+
+      const playerGuess = getSelectedDate("playerGuess");
+      const realDate = getSelectedDate("realDate");
+
+      if (isNaN(playerGuess) || isNaN(realDate)) {
+        alert("Please enter valid dates.");
+        return;
+      }
+
+      let diffDays = Math.abs((playerGuess - realDate) / (1000 * 60 * 60 * 24));
+      let roundScore = diffDays <= 7 ? 500 : Math.max(500 - (diffDays - 7), 0);
+      totalScore += roundScore;
+
+      document.getElementById("output").innerHTML = `
+        <p><strong>Round ${round} of ${maxRounds}</strong></p>
+        <p><strong>Days Off:</strong> ${Math.round(diffDays)}</p>
+        <p><strong>Round Score:</strong> ${Math.round(roundScore)}</p>
+        <p><strong>Total Score:</strong> ${totalScore}/2500</p>
+      `;
+
+      round++;
+      if (round > maxRounds) {
+        setTimeout(() => showFinale(totalScore), 500);
+      }
+    }
+
+    function showFinale(score) {
+      const finale = document.getElementById("finale");
+      finale.style.display = "flex";
+      finale.innerHTML = `
+        <h2>🎉 Game Over 🎉</h2>
+        <p>Your final score is <strong>${score}</strong> out of 2500!</p>
+      `;
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      const cursor = document.createElement('div');
+      cursor.classList.add('custom-cursor');
+      document.body.appendChild(cursor);
+
+      document.addEventListener('mousemove', e => {
+        cursor.style.top = e.clientY + 'px';
+        cursor.style.left = e.clientX + 'px';
+      });
+
+      populateDateSelectors("playerGuess");
+      populateDateSelectors("realDate");
+    });
+
+    window.addEventListener('click', () => {
+      const audio = new Audio('https://cdn.pixabay.com/audio/2023/03/26/audio_3798d64b9f.mp3');
+      audio.loop = true;
+      audio.volume = 0.2;
+      audio.play();
+    }, { once: true });
+  </script>
+</head>
+<body>
+  <div class="stars"></div>
+  <h1>GDGuesser (Single Player)</h1>
+
+  <label>Your Guess:</label>
+  <div class="date-picker">
+    <select id="playerGuess-year"></select>
+    <select id="playerGuess-month"></select>
+    <select id="playerGuess-day"></select>
+  </div>
+
+  <label>Real Date:</label>
+  <div class="date-picker">
+    <select id="realDate-year"></select>
+    <select id="realDate-month"></select>
+    <select id="realDate-day"></select>
+  </div>
+
+  <button onclick="calculateScore()">Submit</button>
+  <div id="output"></div>
+  <div id="finale"></div>
+</body>
+</html>
